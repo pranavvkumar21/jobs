@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 import os
 from langchain.chat_models import ChatOpenAI
-from langchain.prompts import PromptTemplate
+from src.prompts import primary_classifier_prompt, secondary_classifier_prompt, job_info_extractor_prompt
 from langchain.chains import LLMChain
 from tqdm import tqdm
+import json
 
 class Agent:
     def __init__(self, openai_api_key):
@@ -15,11 +16,7 @@ class Agent:
     def primary_classifier_agent(self, emails):
         # Define the prompt template
         categories = ["YES, NO, MAYBE"]
-        prompt_template = PromptTemplate.from_template(
-            """based on the subject line of an email, classify whether it is in regards to a job application
-            or not. output the classification as one of the following categories: {categories}.
-            Subject: {subject} """
-        )
+        prompt_template = primary_classifier_prompt
         for email in tqdm(emails,desc="running primary classifier agent"):
             #print(email)
             subject = email['subject']
@@ -35,30 +32,14 @@ class Agent:
     def secondary_classifier_agent(self, emails):
         # Define the prompt template
         categories = ["YES, NO"]
-        prompt_template = PromptTemplate.from_template(
-            """You are an expert email classifier designed to identify emails related to job applications.
-
-            Based **only** on the email body and subject, determine whether the email is about a specific job application that the recipient has submitted or is being considered for.
-            This includes emails that confirm the application was received, even if the employer has not yet made a decision.
-
-            Exclude the following types of emails:
-            - General job opportunity alerts or newsletters
-            - Feedback requests
-            - Surveys
-            - Career platform engagement emails (e.g., "new jobs for you", "update your profile")
-            - Emails that are not related to job applications
-
-            Classify the email into one of the following categories: {categories} 
-
-            Email Content:
-            {message}"""
-        )
+        prompt_template = secondary_classifier_prompt
         for email in tqdm(emails, desc="running secondary classifier agent"):
             #print(email)
             message = email['body']
             subject = email['subject']
             primary_classification = email['primary_classification']
             if primary_classification == "NO":
+                email['secondary_classification'] = "NO"
                 continue
             
             # Create the LLM chain
@@ -67,5 +48,36 @@ class Agent:
             result = chain.run(categories=categories, message=message)
             #print(f"Subject: {subject} \t primary Classification: {primary_classification} \n secondary Classification: {result}")
             email['secondary_classification'] = result
-        
+            print('secondary classification:',email['secondary_classification'])
+        return emails
+    
+    #agent to extract job info from the email
+    def job_info_extractor_agent(self, emails):
+        # Define the prompt template
+        prompt_template = job_info_extractor_prompt
+        for email in tqdm(emails, desc="running job info extractor agent"):
+            #print(email)
+            message = email['body']
+            subject = email['subject']
+            primary_classification = email['primary_classification']
+            secondary_classification = email['secondary_classification']
+            if primary_classification == "NO" or secondary_classification == "NO":
+                continue
+            # Create the LLM chain
+            chain = LLMChain(llm=self.llm, prompt=prompt_template)
+            # Run the chain
+            result = chain.run(message=message,subject=subject)
+            try:
+                # Convert the result to a dictionary
+                json_result = json.loads(result)
+                email['job_info'] = json_result
+            except json.JSONDecodeError:
+                # Handle the case where the result is not valid JSON
+                print(f"Error decoding JSON: {result}. will be saved as is.")
+                print(result)
+                email['job_info'] = result
+                # You can choose to skip this email or handle it differently
+                continue
+            #json_result = json.loads(result)
+            
         return emails

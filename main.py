@@ -31,10 +31,12 @@ if __name__ == "__main__":
     #run primary classifier agent
     classified_emails = agent.primary_classifier_agent(emails)
     secondary_classified_emails = agent.secondary_classifier_agent(classified_emails)
+    #run job info extractor agent
+    job_info_extracted_emails = agent.job_info_extractor_agent(secondary_classified_emails)
     # Save the classified emails to a json file
     json_file_path = os.path.join(BASE_DIR, "classified_emails.json")
     with open(json_file_path, "w") as json_file:
-        json.dump(secondary_classified_emails, json_file, indent=4)
+        json.dump(job_info_extracted_emails, json_file, indent=4)
 
 
 

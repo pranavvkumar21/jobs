@@ -8,7 +8,7 @@ import datetime
 from bs4 import BeautifulSoup
 import base64
 from email import message_from_bytes
-import csv
+import csv, re, unicodedata
 
 class EmailReader:
     def __init__(self, creds,openai_api_key):
@@ -77,15 +77,32 @@ class EmailReader:
             combined = "\n".join(parts)
             soup = BeautifulSoup(combined, "html.parser")
             body = soup.get_text()
-            #print(f"Subject: {subject}") 
-            #print(f"body: {body}")
+            #body = clean_based_on_sender(sender)
+            body = self.clean_email(body)
             all_emails.append({
                 "subject": subject,
                 "sender": sender,
                 "body": body
             })
         return all_emails
+    def clean_email(self, text):
+        # Remove unwanted characters and clean the email content
+        if not text:
+            return ""
+
+        # Optional: fix broken UTF-8 bytes
+        try:
+            text = text.encode('latin1', errors='ignore').decode('utf-8', errors='ignore')
+        except (UnicodeEncodeError, UnicodeDecodeError):
+            pass
+        # Remove broken or flattened URLs
+        text = re.sub(r'\b(?:http|https|www)[^\s,\.]*', '', text)
+        # Keep only letters, numbers, periods, commas, and spaces
+        text = re.sub(r'[^A-Za-z0-9., ]+', ' ', text)
 
         
 
-        
+        # Collapse multiple spaces
+        text = re.sub(r'\s+', ' ', text)
+
+        return text.strip()
