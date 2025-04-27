@@ -9,35 +9,19 @@ primary_classifier_prompt = PromptTemplate.from_template(
 )
 
 secondary_classifier_prompt = PromptTemplate.from_template(
-    """You are an expert email classifier designed to identify emails related to job applications.
-
-    Based **only** on the email body and subject, determine whether the email is about a specific job application that the recipient has submitted or is being considered for.
-    This includes emails that confirm the application was received, even if the employer has not yet made a decision.
-
-    Exclude the following types of emails:
-    - General job opportunity alerts or newsletters
-    - Feedback requests
-    - Surveys
-    - Career platform engagement emails (e.g., "new jobs for you", "update your profile")
-    - Emails that are not related to job applications
-
-    Classify the email into one of the following categories: {categories} 
-    Do not include quotation marks, periods, or any extra text.
-    Output should be in all caps.
-    Email Content:
-    {message}"""
+    """Based on the email body classify whether the email is in regards to a job application. only output {categories}.
+    ALWAYS output NO if email is about job perferences
+    ALWAYS output NO if email is about job recommendation 
+     ALWAYS output NO if email is about job alerts any job suggestions. 
+     Output No if the email is not regarding an applied job
+     read the whole email before deciding. by default your answer should be No
+    email body: {message}. 
+    """
 )
 
 job_info_extractor_prompt = PromptTemplate.from_template(
     """You are an expert email classifier designed to identify emails related to job applications.
-    The email may contain noise such as:
-    - Tracking tokens (e.g., "lipi urn", "midToken", "trkEmail")
-    - Broken URLs
-    - Help and Unsubscribe footer text
-    - Random strings of characters and numbers.
-    you should:
-    - Focus ONLY on meaningful human-readable English sentences.
-    - Ignore all lines or parts that look like broken links, tokens, or tracking parameters.
+
 
     Based **only** on the email body and subject, extract the following information from the email:
     - Job Title (if no job title is mentioned, use open role)

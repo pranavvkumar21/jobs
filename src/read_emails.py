@@ -18,7 +18,7 @@ class EmailReader:
     def get_emails(self,date = None):
 
         if date is None:
-            date = (datetime.date.today()-datetime.timedelta(days=0)).strftime("%Y/%m/%d")
+            date = (datetime.date.today()-datetime.timedelta(days=2)).strftime("%Y/%m/%d")
         query = f"after:{date} "
         label_query = self.convert_category_to_query(self.config['gmail_filters'].get('category',[]))
         print(label_query)
@@ -50,59 +50,127 @@ class EmailReader:
         return query
     def get_message_details(self,messages):
         all_emails = []
-        for message in tqdm(messages, desc="Reading emails"):
-            full_msg = self.service.users().messages().get(userId='me', id=message['id'], format="raw").execute()
-            msg_bytes = base64.urlsafe_b64decode(full_msg["raw"])
-            email_msg = message_from_bytes(msg_bytes)
-            subject = email_msg["subject"]
-            sender = email_msg["from"]
-            body = None
-            parts = []
 
-            if email_msg.is_multipart():
-                for part in email_msg.walk():
-                    if part.get_content_type().startswith("text/"):
-                        try:
-                            payload = part.get_payload(decode=True)
-                            if payload:
-                                decoded = payload.decode(errors="replace")
-                                parts.append(decoded)
-                        except Exception:
-                            continue
+        def extract_parts_from_payload(payload):
+            text_bits = []
+            html_bits = []
+
+            def walk_parts(parts):
+                for part in parts:
+                    mime_type = part.get("mimeType")
+                    body = part.get("body", {})
+                    data = body.get("data")
+
+                    if mime_type and mime_type.startswith("multipart/"):
+                        nested_parts = part.get("parts", [])
+                        walk_parts(nested_parts)
+
+                    elif data:
+                        decoded = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                        if mime_type == "text/plain":
+                            text_bits.append(decoded)
+                        elif mime_type == "text/html":
+                            html_bits.append(decoded)
+
+            if 'parts' in payload:
+                walk_parts(payload['parts'])
             else:
-                payload = email_msg.get_payload(decode=True)
-                if payload:
-                    parts.append(payload.decode(errors="replace"))
+                # Sometimes, emails are not multipart
+                mime_type = payload.get('mimeType')
+                body = payload.get('body', {})
+                data = body.get('data')
 
-            combined = "\n".join(parts)
-            soup = BeautifulSoup(combined, "html.parser")
-            body = soup.get_text()
-            #body = clean_based_on_sender(sender)
+                if data:
+                    decoded = base64.urlsafe_b64decode(data).decode('utf-8', errors='ignore')
+                    if mime_type == "text/plain":
+                        text_bits.append(decoded)
+                    elif mime_type == "text/html":
+                        html_bits.append(decoded)
+
+            return text_bits, html_bits
+
+        for message in tqdm(messages, desc="Reading emails"):
+            full_msg = self.service.users().messages().get(userId='me', id=message['id'], format="full").execute()
+            payload = full_msg.get('payload', {})
+
+            headers = payload.get('headers', [])
+            subject = next((h['value'] for h in headers if h['name'].lower() == 'subject'), None)
+            sender = next((h['value'] for h in headers if h['name'].lower() == 'from'), None)
+
+            text_bits, html_bits = extract_parts_from_payload(payload)
+            combined_text = "\n".join(text_bits).strip()
+            combined_html = "\n".join(html_bits).strip()
+            
+            
+            body = ""
+
+            if combined_text:
+                
+                body += "\n"+combined_text
+            if combined_html:
+                soup = BeautifulSoup(combined_html, "html.parser")
+                for tag in soup(["style", "script", "link", "img", "svg", "meta", "noscript", "iframe", "head", "a"]):
+                    tag.decompose()
+                paragraphs = "\n"
+                paragraphs = soup.find_all("p")
+                paragraphs = ' '.join(p.get_text(strip=True) for p in paragraphs)
+                #print(paragraphs)
+                body += "\n"+paragraphs
+            #print(body)
             body = self.clean_email(body)
+            #print("cleaned body - \n")
+            #print(body)
+            #print("-"*20)
             all_emails.append({
                 "subject": subject,
                 "sender": sender,
                 "body": body
             })
+
         return all_emails
+
     def clean_email(self, text):
         # Remove unwanted characters and clean the email content
         if not text:
             return ""
 
-        # Optional: fix broken UTF-8 bytes
-        try:
-            text = text.encode('latin1', errors='ignore').decode('utf-8', errors='ignore')
-        except (UnicodeEncodeError, UnicodeDecodeError):
-            pass
         # Remove broken or flattened URLs
-        text = re.sub(r'\b(?:http|https|www)[^\s,\.]*', '', text)
+        text = re.sub(r'http\S+', '\n', text)
         # Keep only letters, numbers, periods, commas, and spaces
-        text = re.sub(r'[^A-Za-z0-9., ]+', ' ', text)
+        text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+
+        cutoff = int(len(text) * 0.7)
+        footer_area = text[cutoff:].lower()
+        footer_keywords = [
+        "unsubscribe", "privacy policy", "help centre", "terms of service", 
+        "replies to this email", "contact customer service", "manage settings",
+        "copyright", "©", "capital dock", "grand canal dock"
+        ]
+
+        for keyword in footer_keywords:
+            idx = footer_area.find(keyword)
+            if idx != -1:
+                text = text[:cutoff + idx].strip()
+
+
+        text = re.sub(r'-{2,}', '', text)
+        # Collapse multiple spaces
+        text = re.sub(r'[ \t]+', ' ', text)
+        text = re.sub(r'\r\n', '\n', text)
+        text = re.sub(r'-{5,}', '', text)
+        text = re.sub(r'\n+', '\n', text)
+
+        # important_keywords = [
+        # "position", "application", "hiring", "interview", "selected", 
+        # "move forward", "thank you", "role", "opportunity", "applying", "unfortunately"
+        # ]
+
+        # text_blocks = text.split("\n")  # break into rough paragraphs
+        # good_blocks = [block for block in text_blocks if any(word in block.lower() for word in important_keywords)]
+
+        # text = "\n\n".join(good_blocks)
 
         
-
-        # Collapse multiple spaces
-        text = re.sub(r'\s+', ' ', text)
+        
 
         return text.strip()

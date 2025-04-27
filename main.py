@@ -29,14 +29,14 @@ if __name__ == "__main__":
     # Get the emails
     emails = email_reader.get_emails()
     #run primary classifier agent
-    classified_emails = agent.primary_classifier_agent(emails)
-    secondary_classified_emails = agent.secondary_classifier_agent(classified_emails)
+    emails = agent.primary_classifier_agent(emails)
+    emails = agent.secondary_classifier_agent(emails)
     #run job info extractor agent
-    job_info_extracted_emails = agent.job_info_extractor_agent(secondary_classified_emails)
+    emails = agent.job_info_extractor_agent(emails)
     # Save the classified emails to a json file
-    json_file_path = os.path.join(BASE_DIR, "classified_emails.json")
+    json_file_path = os.path.join(BASE_DIR, "classified_emails4.json")
     with open(json_file_path, "w") as json_file:
-        json.dump(job_info_extracted_emails, json_file, indent=4)
+        json.dump(emails, json_file, indent=4)
 
 
 
