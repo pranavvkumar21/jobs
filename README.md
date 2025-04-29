@@ -22,14 +22,13 @@ The goal is to make job application tracking more reliable and less manual.
 - **Developed email body cleaner for classification prep**
 - **Created agent for classifying job-related emails**
 - **Created agent for extracting job opportunity information**
-
+- **Created a much better cleaning logic**
+- **Implement spreadsheet insertion function**
 ---
 
 ## Upcoming Tasks
 
-- **Build sender-specific email cleaning logic**  
-  (currently testing Gmail's `format=full` to reduce email body noise)
-- **Implement spreadsheet insertion function**
+
 - **Add fuzzy search for matching similar company names and job titles**
 - **Implement row update function for existing spreadsheet entries**
 
