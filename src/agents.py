@@ -45,7 +45,7 @@ class Agent:
             # Create the LLM chain
             chain = LLMChain(llm=self.llm, prompt=prompt_template)
             # Run the chain
-            result = chain.run(categories=categories, message=message)
+            result = chain.run(categories=categories, message=message,subject=subject)
             #print(f"Subject: {subject} \t primary Classification: {primary_classification} \n secondary Classification: {result}")
             email['secondary_classification'] = result
             print('secondary classification:',email['secondary_classification'])

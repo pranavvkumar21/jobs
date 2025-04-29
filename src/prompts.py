@@ -14,7 +14,8 @@ secondary_classifier_prompt = PromptTemplate.from_template(
     ALWAYS output NO if email is about job recommendation 
      ALWAYS output NO if email is about job alerts any job suggestions. 
      Output No if the email is not regarding an applied job
-     read the whole email before deciding. by default your answer should be No
+     read the whole email before deciding. by default your answer should be No.
+     email subject: {subject}
     email body: {message}. 
     """
 )

@@ -16,9 +16,51 @@ search for a specific companies in the sheet."""
 
 
 class SpreadsheetEditor:
-    def __init__(self,spreadsheet_id=None):
-        self.spreadsheet_id = spreadsheet_id
+    def __init__(self, creds,workspace_folder_name, spreadsheet_title):
+        """Initialize the SpreadsheetEditor with Google Sheets and Drive API credentials."""
+        self.drive_service = build('drive', 'v3', credentials=creds)
+        self.sheets_service = build('sheets', 'v4', credentials=creds)
+        self.create_workspace(folder_name=workspace_folder_name)
+        self.create_spreadsheet()
         self.is_column_names_created = False
+    def create_workspace(self, folder_name):
+        # if workspace folder already exists, return the id else create a new one
+        """Create a new folder in Google Drive to store the spreadsheet."""
+        folder_id = self.get_folder_id(self.drive_service, folder_name)
+        if not folder_id:
+            self.workspace_folder_id = self.create_folder(self.drive_service, folder_name)
+        self.workspace_folder_id = folder_id
+
+    def get_folder_id(service, path):
+        parent = 'root'
+        for name in path.strip('/').split('/'):
+            q = f"'{parent}' in parents and name = '{name}' and mimeType = 'application/vnd.google-apps.folder'"
+            res = service.files().list(q=q, fields="files(id)").execute()
+            files = res.get('files')
+            if not files:
+                return None
+            parent = files[0]['id']
+        return parent
+
+    def create_folder_path(service, path):
+        parent = 'root'
+        for name in path.strip('/').split('/'):
+            q = f"'{parent}' in parents and name = '{name}' and mimeType = 'application/vnd.google-apps.folder'"
+            res = service.files().list(q=q, fields="files(id)").execute()
+            files = res.get('files')
+            if files:
+                parent = files[0]['id']
+            else:
+                file_metadata = {
+                    'name': name,
+                    'mimeType': 'application/vnd.google-apps.folder',
+                    'parents': [parent]
+                }
+                file = service.files().create(body=file_metadata, fields='id').execute()
+                parent = file['id']
+        return parent  # ID of the final folder
+
+
     def create_spreadsheet(self, title, folder_id=None):
         """Create a new Google Sheet with the given title."""
         spreadsheet = {
