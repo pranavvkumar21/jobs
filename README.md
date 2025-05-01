@@ -23,15 +23,16 @@ The goal is to make job application tracking more reliable and less manual.
 - **Created agent for classifying job-related emails**
 - **Created agent for extracting job opportunity information**
 - **Created a much better cleaning logic**
+- **Created an agent for further cleaning of data.**
+    **Can removed if using a larger model but 3.5-turbo tends to misclassify without this**
 - **Implement spreadsheet insertion function**
 ---
 
 ## Upcoming Tasks
 
-- **Secondary Classification Propmpt needs tweeking**
-- **Experiment with agent to further clean data before passing to secondary classifier**
-- **Add fuzzy search for matching similar company names and job titles**
-- **Implement row update function for existing spreadsheet entries**
+
+
+- **Change append function to edit existing rows if title and company name matches and append rows that don't match**
 
 ---
 
