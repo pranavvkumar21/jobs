@@ -25,7 +25,7 @@ if __name__ == "__main__":
     else:
         print("Google API authentication failed.")
         exit(1)
-    json_file_path = os.path.join(BASE_DIR, "classified_emails5.json")
+    json_file_path = os.path.join(BASE_DIR, "classified_emails6.json")
     if os.path.exists(json_file_path):
         with open(json_file_path, "r") as json_file:
             emails = json.load(json_file)
@@ -35,18 +35,17 @@ if __name__ == "__main__":
         email_reader = EmailReader(creds,openai_api_key)
         # Get the emails
         emails = email_reader.get_emails()
+        print(f"Found {len(emails)} emails")
+        print("Classifying emails...")
         #run primary classifier agent
-        emails = agent.primary_classifier_agent(emails)
-        emails = agent.secondary_classifier_agent(emails)
-        #run job info extractor agent
-        emails = agent.job_info_extractor_agent(emails)
+        emails = agent.run(emails)
         # Save the classified emails to a json file
 
         with open(json_file_path, "w") as json_file:
             json.dump(emails, json_file, indent=4)
     
-    spreadsheet_editor = SpreadsheetEditor(creds, "JOBS Application Tracker2", "Job Applications4")
-    spreadsheet_editor.append_data(emails)
+    #spreadsheet_editor = SpreadsheetEditor(creds, "JOBS Application Tracker2", "Job Applications4")
+    #spreadsheet_editor.append_data(emails)
     # for email in emails:
     #     #print(email)
     #     if email['secondary_classification'] == "YES":

@@ -28,7 +28,8 @@ The goal is to make job application tracking more reliable and less manual.
 
 ## Upcoming Tasks
 
-
+- **Secondary Classification Propmpt needs tweeking**
+- **Experiment with agent to further clean data before passing to secondary classifier**
 - **Add fuzzy search for matching similar company names and job titles**
 - **Implement row update function for existing spreadsheet entries**
 

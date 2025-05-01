@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 from langchain.chat_models import ChatOpenAI
-from src.prompts import primary_classifier_prompt, secondary_classifier_prompt, job_info_extractor_prompt
+from src.prompts import primary_classifier_prompt, secondary_classifier_prompt, job_info_extractor_prompt, data_cleaner_prompt
 from langchain.chains import LLMChain
 from tqdm import tqdm
 import json
@@ -27,7 +27,18 @@ class Agent:
             result = chain.run(categories=categories, subject=subject)
             #print(f"Subject: {subject} \tClassification: {result}")
             email['primary_classification'] = result
-        
+        return emails
+    def data_cleaner_agent(self, emails):
+        # Define the prompt template
+        prompt_template = data_cleaner_prompt
+        for email in tqdm(emails, desc="running data cleaner agent"):
+            #print(email)
+            subject = email['subject']
+            chain = LLMChain(llm=self.llm, prompt=prompt_template)
+            # Run the chain
+            result = chain.run(subject=subject,message=email['body'])
+
+            email['cleaned_body'] = result
         return emails
     def secondary_classifier_agent(self, emails):
         # Define the prompt template
@@ -57,7 +68,7 @@ class Agent:
         prompt_template = job_info_extractor_prompt
         for email in tqdm(emails, desc="running job info extractor agent"):
             #print(email)
-            message = email['body']
+            message = email['cleaned_body']
             subject = email['subject']
             primary_classification = email['primary_classification']
             secondary_classification = email['secondary_classification']
@@ -67,6 +78,8 @@ class Agent:
             chain = LLMChain(llm=self.llm, prompt=prompt_template)
             # Run the chain
             result = chain.run(message=message,subject=subject)
+            #result = response['text']
+            
             try:
                 # Convert the result to a dictionary
                 json_result = json.loads(result)
@@ -80,4 +93,15 @@ class Agent:
                 continue
             #json_result = json.loads(result)
             
+        return emails
+
+    def run(self, emails):
+        # Run the primary classifier agent
+        emails = self.primary_classifier_agent(emails)
+        # Run the data cleaner agent
+        emails = self.data_cleaner_agent(emails)
+        # Run the secondary classifier agent
+        emails = self.secondary_classifier_agent(emails)
+        # Run the job info extractor agent
+        emails = self.job_info_extractor_agent(emails)
         return emails

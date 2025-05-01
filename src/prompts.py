@@ -48,3 +48,16 @@ job_info_extractor_prompt = PromptTemplate.from_template(
     return as json format.
     """
 )
+
+data_cleaner_prompt = PromptTemplate.from_template(
+    """You are an expert data cleaner. Given raw unprocessed email body which may be noisy, 
+    and contain headers, footers, disclaimers, and other irrelevant information,
+    clean and extract the email message by removing all the irrelevant information.
+    email subject: {subject}
+    email body: {message}
+    return the cleaned email body.
+    If the email body does not contain any relevant information, return "N/A".
+    Do not include any extra text or explanation. if the job pertains to a job application,
+    ensure to include the job title, company name, and application status in the cleaned email body.
+    """
+)

@@ -108,7 +108,7 @@ class SpreadsheetEditor:
         body = {
             "values": [self.column_names]
         }
-        self.sheets_service.spreadsheets().values().update(
+        self.sheets_service.spreadsheets().append().update(
             spreadsheetId=self.spreadsheet_id,
             range="A1",
             valueInputOption="RAW",
@@ -148,3 +148,4 @@ class SpreadsheetEditor:
             spreadsheetId=self.spreadsheet_id,
             body={"requests": requests}
         ).execute()
+    
