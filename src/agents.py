@@ -4,7 +4,7 @@ from langchain.chat_models import ChatOpenAI
 from src.prompts import primary_classifier_prompt, secondary_classifier_prompt, job_info_extractor_prompt, data_cleaner_prompt
 from langchain.chains import LLMChain
 from tqdm import tqdm
-import json
+import json,re
 
 class Agent:
     def __init__(self, openai_api_key):
@@ -34,6 +34,8 @@ class Agent:
         for email in tqdm(emails, desc="running data cleaner agent"):
             #print(email)
             subject = email['subject']
+            if email['primary_classification'] == "NO":
+                continue
             chain = LLMChain(llm=self.llm, prompt=prompt_template)
             # Run the chain
             result = chain.run(subject=subject,message=email['body'])
@@ -59,7 +61,7 @@ class Agent:
             result = chain.run(message=message,subject=subject)
             #print(f"Subject: {subject} \t primary Classification: {primary_classification} \n secondary Classification: {result}")
             email['secondary_classification'] = result
-            print('secondary classification:',email['secondary_classification'])
+            #print('secondary classification:',email['secondary_classification'])
         return emails
     
     #agent to extract job info from the email
@@ -68,28 +70,43 @@ class Agent:
         prompt_template = job_info_extractor_prompt
         for email in tqdm(emails, desc="running job info extractor agent"):
             #print(email)
-            message = email['cleaned_body']
-            subject = email['subject']
+            
             primary_classification = email['primary_classification']
             secondary_classification = email['secondary_classification']
             if primary_classification == "NO" or secondary_classification == "NO":
                 continue
             # Create the LLM chain
+            message = email['cleaned_body']
+            subject = email['subject']
             chain = LLMChain(llm=self.llm, prompt=prompt_template)
             # Run the chain
             result = chain.run(message=message,subject=subject)
             #result = response['text']
-            
+            # extract the job info from the result
+            job_info = result.split("<job_info>")[1].split("</job_info>")[0]
             try:
-                # Convert the result to a dictionary
-                json_result = json.loads(result)
-                email['job_info'] = json_result
-            except json.JSONDecodeError:
+                match = re.search(r"<job_info>(.*?)</job_info>", result, re.DOTALL)
+                extracted = match.group(1) if match else None
+                if extracted:
+                    details = extracted.split("\n")
+                    formatted_result = {}
+                    for detail in details:
+                        if ":" in detail:
+                            key, value = detail.split(":", 1)
+                            formatted_result[key.strip()] = value.strip()
+                    #formatted_result = {k.strip(): v.strip() for k, v in (item.split(":", 1) for item in details)}
+            except Exception as e:
+                print(f"Error extracting job info: {e}")
+                print(details)
+
+            try:
+
+                email['job_info'] = formatted_result
+            except Exception as e:
+                print(f"Error processing email: {email['subject']}")
+                print(f"Error: {e}")
                 # Handle the case where the result is not valid JSON
-                print(f"Error decoding JSON: {result}. will be saved as is.")
-                print(result)
-                email['job_info'] = result
-                # You can choose to skip this email or handle it differently
+
                 continue
             #json_result = json.loads(result)
             

@@ -39,13 +39,15 @@ job_info_extractor_prompt = PromptTemplate.from_template(
     email subject: {subject}
     email body: {message}
     return the extracted information in the following format:
+    <job_info>
     job_title: <job title>
     company_name: <company name>
     location: <location>
     application_status: <application status>
+    </job_info>
     If the email does not contain any of the above information, return "N/A" for that field. do not numbers or bullet points.
 
-    return as json format.
+    
     """
 )
 
@@ -58,6 +60,6 @@ data_cleaner_prompt = PromptTemplate.from_template(
     return the cleaned email body.
     If the email body does not contain any relevant information, return "N/A".
     Do not include any extra text or explanation. if the job pertains to a job application,
-    ensure to include the job title, company name, and application status in the cleaned email body.
+    ensure to include the job title, company name, location and application status in the cleaned email body.
     """
 )

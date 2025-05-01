@@ -86,66 +86,78 @@ class SpreadsheetEditor:
 
     def append_data(self,emails):
         """Append data to the existing Google Sheet."""
+        self.create_column_names()
         data = []
         for email in emails:
             if 'job_info' in email:
                 row = email['job_info']
-                print(f"row: {row}")
-                row = [row['job_title'], row['company_name'], row['location'], row['application_status']]
+                # print("type of row:",type(row))
+                # print(f"row: {row}")
+                row = [" ",row['job_title'], row['company_name'], row['location'], row['application_status']]
                 data.append(row)
         body = {
             "values": data
         }
         self.sheets_service.spreadsheets().values().append(
             spreadsheetId=self.spreadsheet_id,
-            range="A1",
+            range="B3",
             valueInputOption="RAW",
             body=body
         ).execute()
         print(f"Data of size {len(data)} appended to the spreadsheet.")
+        self.create_index_column(start_row=2, column_index=0, reference_column="B")
     def create_column_names(self):
         """Create column names in the first row of the Google Sheet."""
         body = {
             "values": [self.column_names]
         }
-        self.sheets_service.spreadsheets().append().update(
+        self.sheets_service.spreadsheets().values().update(
             spreadsheetId=self.spreadsheet_id,
-            range="A1",
+            range="B1",
             valueInputOption="RAW",
             body=body
         ).execute()
         self.is_column_names_created = True
         print(f"Column names {self.column_names} created in the spreadsheet.")
 
-    def create_index_column(self, start_row, column_name, reference_column):
+    def create_index_column(self, start_row, column_index, reference_column):
         """Create an index column in the Google Sheet."""
-        requests = [
-            {
-                "addConditionalFormatRule": {
-                    "rule": {
-                        "ranges": [{
-                            "sheetId": 0,
-                            "startRowIndex": start_row - 1,
-                            "startColumnIndex": column_name,
-                            "endColumnIndex": column_name + 1
-                        }],
-                        "booleanRule": {
-                            "condition": {
-                                "type": "CUSTOM_FORMULA",
-                                "values": [{"userEnteredValue": f"=ISBLANK({reference_column}{start_row})"}]
-                            },
-                            "format": {
-                                "backgroundColor": {"red": 1, "green": 0.9, "blue": 0.9}
-                            }
+        response = self.sheets_service.spreadsheets().values().get(
+            spreadsheetId=self.spreadsheet_id,
+            range="B:B",
+            majorDimension="COLUMNS"
+        ).execute()
+
+        last_row = len(response.get("values", [[]])[0]) + 3  # offset by row 3
+
+        # 2. Clear A3 downward
+        self.sheets_service.spreadsheets().values().clear(
+            spreadsheetId=self.spreadsheet_id,
+            range="A3:A",
+        ).execute()
+
+        # 3. Insert ARRAYFORMULA in A3
+        formula = f'=ARRAYFORMULA(IF(ROW(A3:A) <= {last_row}, IF(NOT(ISBLANK(B3:B)), ROW(B3:B)-3, ""), ""))'
+
+        requests = [{
+            "updateCells": {
+                "rows": [{
+                    "values": [{
+                        "userEnteredValue": {
+                            "formulaValue": formula
                         }
-                    },
-                    "index": 0
+                    }]
+                }],
+                "fields": "userEnteredValue",
+                "start": {
+                    "sheetId": 0,
+                    "rowIndex": 2,      # A3
+                    "columnIndex": 0    # Column A
                 }
             }
-        ]
+        }]
 
         self.sheets_service.spreadsheets().batchUpdate(
             spreadsheetId=self.spreadsheet_id,
             body={"requests": requests}
         ).execute()
-    
