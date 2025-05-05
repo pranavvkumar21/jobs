@@ -3,6 +3,7 @@ import os
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
+import src.conditional_formatting as cf
 
 
 """Spreadsheet Editor for Google Sheets and Drive.
@@ -16,7 +17,7 @@ search for a specific companies in the sheet."""
 
 
 class SpreadsheetEditor:
-    def __init__(self, creds,workspace_folder_name, spreadsheet_title, column_names=["Job Title", "Company Name", "Location", "Application Status"]):
+    def __init__(self, creds,workspace_folder_name, spreadsheet_title, column_names=["Sl.no","Job Title", "Company Name", "Location", "Application Status"]):
         """Initialize the SpreadsheetEditor with Google Sheets and Drive API credentials."""
         self.drive_service = build('drive', 'v3', credentials=creds)
         self.sheets_service = build('sheets', 'v4', credentials=creds)
@@ -63,7 +64,7 @@ class SpreadsheetEditor:
         return parent  # ID of the final folder
 
     def create_spreadsheet(self, title):
-        
+
         # check if spreadsheet exists in folder id
         q = f"'{self.workspace_folder_id}' in parents and name = '{title}' and trashed = false"
         res = self.drive_service.files().list(q=q, fields="files(id)").execute()
@@ -81,8 +82,15 @@ class SpreadsheetEditor:
             print(f"Spreadsheet {title} created.")
             self.spreadsheet_id = spreadsheet['id']
             self.create_column_names()
-            
-    
+            # apply conditional formatting
+        sheet_metadata = self.sheets_service.spreadsheets().get(spreadsheetId=self.spreadsheet_id).execute()
+        sheet_id = sheet_metadata['sheets'][0]['properties']['sheetId']
+        rule = cf.colour_application_status(sheet_id)
+        self.sheets_service.spreadsheets().batchUpdate(
+            spreadsheetId=self.spreadsheet_id,
+            body=rule
+        ).execute()
+        print(f"Conditional formatting applied.")
 
     def append_data(self,emails):
         """Append data to the existing Google Sheet."""
@@ -95,17 +103,21 @@ class SpreadsheetEditor:
                 # print(f"row: {row}")
                 row = [" ",row['job_title'], row['company_name'], row['location'], row['application_status']]
                 data.append(row)
+        data = self.update_status(data)
+        self.create_index_column(start_row=2, column_index=0, reference_column="B")
         body = {
             "values": data
         }
         self.sheets_service.spreadsheets().values().append(
             spreadsheetId=self.spreadsheet_id,
-            range="B3",
+            range="A3",
             valueInputOption="RAW",
             body=body
         ).execute()
         print(f"Data of size {len(data)} appended to the spreadsheet.")
         self.create_index_column(start_row=2, column_index=0, reference_column="B")
+        # apply conditional formatting
+
     def create_column_names(self):
         """Create column names in the first row of the Google Sheet."""
         body = {
@@ -113,7 +125,7 @@ class SpreadsheetEditor:
         }
         self.sheets_service.spreadsheets().values().update(
             spreadsheetId=self.spreadsheet_id,
-            range="B1",
+            range="A1",
             valueInputOption="RAW",
             body=body
         ).execute()
@@ -137,7 +149,7 @@ class SpreadsheetEditor:
         ).execute()
 
         # 3. Insert ARRAYFORMULA in A3
-        formula = f'=ARRAYFORMULA(IF(ROW(A3:A) <= {last_row}, IF(NOT(ISBLANK(B3:B)), ROW(B3:B)-3, ""), ""))'
+        formula = f'=ARRAYFORMULA(IF(ROW(A3:A) <= {last_row}, IF(NOT(ISBLANK(B3:B)), ROW(B3:B)-2, ""), ""))'
 
         requests = [{
             "updateCells": {
@@ -161,3 +173,41 @@ class SpreadsheetEditor:
             spreadsheetId=self.spreadsheet_id,
             body={"requests": requests}
         ).execute()
+    def update_status(self, data):
+        # Update the status of a job application in the Google Sheet.
+
+        #get data from the sheet
+        sheets_data = self.sheets_service.spreadsheets().values().get(
+            spreadsheetId=self.spreadsheet_id,
+            range="A3:G",
+        ).execute().get("values", [])
+        to_remove = []
+        # check if job title and company name are in the sheet
+        for job_row in data:
+            flag = False
+            for sheet_row in sheets_data:
+                print("sheet_row:",sheet_row)
+                if job_row[1].strip().lower() == sheet_row[1].strip().lower() and job_row[2].strip().lower() == sheet_row[2].strip().lower():
+                    # update the status
+                    flag = True
+                    print(f"Updating status of {job_row[1]} at {job_row[2]}")
+                    self.update_row(row_index=int(sheet_row[0])+3, column="A", value=job_row)
+            if flag:
+                to_remove.append(job_row)
+        for job_row in to_remove:
+            data.remove(job_row)
+        return data
+
+    def update_row(self, row_index, column, value):
+        """Update a specific cell in the Google Sheet."""
+        print(f"row_index: {row_index}, column_index: {column}, value: {value}")
+        body = {
+            "values": [value]
+        }
+        self.sheets_service.spreadsheets().values().update(
+            spreadsheetId=self.spreadsheet_id,
+            range=f"{column}{row_index}",
+            valueInputOption="RAW",
+            body=body
+        ).execute()
+        print(f"Cell {column}{row_index} updated to {value}.")

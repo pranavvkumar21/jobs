@@ -38,7 +38,7 @@ class Agent:
                 continue
             chain = LLMChain(llm=self.llm, prompt=prompt_template)
             # Run the chain
-            result = chain.run(subject=subject,message=email['body'])
+            result = chain.run(message=email['body'])
 
             email['cleaned_body'] = result
         return emails

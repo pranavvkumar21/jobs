@@ -9,19 +9,20 @@ primary_classifier_prompt = PromptTemplate.from_template(
 )
 
 secondary_classifier_prompt = PromptTemplate.from_template(
-    """You are an expert email classifier. Given a raw email body (with noise), determine if it's **directly related to a job application**.
+    """You are an expert email classifier. Given a raw email body determine if it's directly related to a job application.
 
     Rules:
-    - Output **YES** only if the email is a **response to an applied job** (e.g. rejection, interview, offer).
+    - Output **YES** only if the email is a **response to a job application** (e.g.applied, rejection, interview, offer).
     - Output **NO** if it's about:
     - Job preferences
     - Job recommendations
     - Job alerts or suggestions
     - Any email not about a specific application
     - Default to **NO**. Always read the full email before answering.
+    - If the email states thank you for applying, it is a response to a job application.
+    - If the email states thank you for your interest, it is a response to a job application.
 
     Input:
-    Subject: {subject}
     Body: {message} 
     Output: YES or NO"""
 )
@@ -55,11 +56,11 @@ data_cleaner_prompt = PromptTemplate.from_template(
     """You are an expert data cleaner. Given raw unprocessed email body which may be noisy, 
     and contain headers, footers, disclaimers, and other irrelevant information,
     clean and extract the email message by removing all the irrelevant information.
-    email subject: {subject}
+    Do not include any extra text or explanation. If the message maybe related to a job application,
+    do not remove anything that may look like - the job title, company name, location and application status in the cleaned email body.
     email body: {message}
     return the cleaned email body.
     If the email body does not contain any relevant information, return "N/A".
-    Do not include any extra text or explanation. if the job pertains to a job application,
-    ensure to include the job title, company name, location and application status in the cleaned email body.
+    
     """
 )

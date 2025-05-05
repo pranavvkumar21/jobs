@@ -44,7 +44,7 @@ if __name__ == "__main__":
         with open(json_file_path, "w") as json_file:
             json.dump(emails, json_file, indent=4)
     
-    spreadsheet_editor = SpreadsheetEditor(creds, "JOBS Application Tracker2", "Job Applications7")
+    spreadsheet_editor = SpreadsheetEditor(creds, "JOBS Application Tracker2", "Job Applications12")
     spreadsheet_editor.append_data(emails)
     # for email in emails:
     #     #print(email)
