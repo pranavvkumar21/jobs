@@ -18,7 +18,7 @@ class EmailReader:
     def get_emails(self,date = None):
 
         if date is None:
-            date = (datetime.date.today()-datetime.timedelta(days=2)).strftime("%Y/%m/%d")
+            date = (datetime.date.today()-datetime.timedelta(days=0)).strftime("%Y/%m/%d")
         query = f"after:{date} "
         label_query = self.convert_category_to_query(self.config['gmail_filters'].get('category',[]))
         print(label_query)

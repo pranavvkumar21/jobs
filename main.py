@@ -5,6 +5,7 @@ from src.read_emails import EmailReader
 from src.spreadheet_editor import SpreadsheetEditor
 from src.agents import Agent
 from dotenv import load_dotenv
+import datetime
 import json
 load_dotenv()
 scopes = ['https://www.googleapis.com/auth/gmail.readonly',
@@ -25,7 +26,8 @@ if __name__ == "__main__":
     else:
         print("Google API authentication failed.")
         exit(1)
-    json_file_path = os.path.join(BASE_DIR, "classified_emails6.json")
+    todays_date = datetime.date.today().strftime("%Y_%m_%d")
+    json_file_path = os.path.join(BASE_DIR, f"data/emails_{todays_date}.json")
     if os.path.exists(json_file_path):
         with open(json_file_path, "r") as json_file:
             emails = json.load(json_file)
@@ -44,7 +46,7 @@ if __name__ == "__main__":
         with open(json_file_path, "w") as json_file:
             json.dump(emails, json_file, indent=4)
     
-    spreadsheet_editor = SpreadsheetEditor(creds, "JOBS Application Tracker2", "Job Applications12")
+    spreadsheet_editor = SpreadsheetEditor(creds, "JOBS Application Tracker", "Job Applications")
     spreadsheet_editor.append_data(emails)
     # for email in emails:
     #     #print(email)

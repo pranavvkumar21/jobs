@@ -29,9 +29,11 @@ class SpreadsheetEditor:
         # if workspace folder already exists, return the id else create a new one
         """Create a new folder in Google Drive to store the spreadsheet."""
         self.workspace_folder_id = self.get_folder_id(folder_name)
+        print(f"workspace exists with id: {self.workspace_folder_id}")
         if not self.workspace_folder_id:
+            print(f"workspace folder {folder_name} not found. Creating a new one.")
             self.workspace_folder_id = self.create_folder_path(folder_name)
-        print(f"Workspace folder ID: {self.workspace_folder_id}")
+        #print(f"Workspace folder ID: {self.workspace_folder_id}")
 
     def get_folder_id(self, path):
         parent = 'root'
@@ -186,11 +188,11 @@ class SpreadsheetEditor:
         for job_row in data:
             flag = False
             for sheet_row in sheets_data:
-                print("sheet_row:",sheet_row)
+                #print("sheet_row:",sheet_row)
                 if job_row[1].strip().lower() == sheet_row[1].strip().lower() and job_row[2].strip().lower() == sheet_row[2].strip().lower():
                     # update the status
                     flag = True
-                    print(f"Updating status of {job_row[1]} at {job_row[2]}")
+                    #print(f"Updating status of {job_row[1]} at {job_row[2]}")
                     self.update_row(row_index=int(sheet_row[0])+3, column="A", value=job_row)
             if flag:
                 to_remove.append(job_row)

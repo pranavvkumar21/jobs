@@ -31,9 +31,6 @@ The goal is to make job application tracking more reliable and less manual.
 ## Upcoming Tasks
 
 
-
-- **Change append function to edit existing rows if title and company name matches and append rows that don't match**
-
 ---
 
 ## Future Improvements (optional)

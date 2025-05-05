@@ -18,9 +18,8 @@ secondary_classifier_prompt = PromptTemplate.from_template(
     - Job recommendations
     - Job alerts or suggestions
     - Any email not about a specific application
-    - Default to **NO**. Always read the full email before answering.
-    - If the email states thank you for applying, it is a response to a job application.
-    - If the email states thank you for your interest, it is a response to a job application.
+
+
 
     Input:
     Body: {message} 
